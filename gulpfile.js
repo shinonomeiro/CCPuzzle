@@ -3,7 +3,7 @@ var gulp = require('gulp');
 var del = require('del');
 var webserver = require('gulp-webserver');
 var htmlreplace = require('gulp-html-replace');
-var jscursh = require('gulp-jscrush');
+var jscrush = require('gulp-jscrush');
 var concat = require('gulp-concat');
 var babel = require('gulp-babel');
 
@@ -61,7 +61,7 @@ gulp.task('compress-debug', ['compile'], () => {
         .pipe(gulp.dest('dist'));
 });
 gulp.task('obfuscate', () => {
-    return gulp.src('./framework/cocos2d-js-v3.10.js').pipe(jscursh()).pipe(gulp.dest('./build'));
+    return gulp.src('./framework/cocos2d-js-v3.10.js').pipe(jscrush()).pipe(gulp.dest('./build'));
 });
 
 gulp.task('build', ['copy-resources']);
@@ -72,15 +72,15 @@ gulp.task('default', ['clean-trash-debug'] , () => {
             livereload: {
                 enable : true,
                 filter: function(fileName) {
-                    if (fileName.match('node_moduels') || fileName.match('dist')) { // exclude all source maps from livereload
+                    if (fileName.match('node_modules') || fileName.match('dist')) { // exclude all source maps from livereload
                         return false;
                     } else {
                         return true;
                     }
                 }
             },
-            directoryListing: true,
-            open: './index.html'
+            host: '0.0.0.0',
+            directoryListing: true
         }));
 
     gulp.watch(['./src/**/*.js', './main.js'], function(event) {
