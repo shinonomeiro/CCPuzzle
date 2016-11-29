@@ -3,5 +3,7 @@
     "frameRate"     : 60,
     "id"            : "gameCanvas",
     "renderMode"    : 0,
-    "jsList"        : []
+    "jsList"        : [
+    	"dist/game.build.js"
+    ]
 }

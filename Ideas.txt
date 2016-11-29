@@ -1,0 +1,76 @@
+General gameplay
+- Player is given an initial play block at start
+- Player can swap its play block with a grid block by tapping on it
+- Grid scan bar moves from top to bottom of playable range
+- When scan bar hovers a row, perform matches on the blocks of that row in both directions
+- While matches are being processed, stop scan bar progression
+- While matches are being processed, player can keep playing
+- Execute additional passes until no more matches can be found, then resume scan bar
+- [Tentative] Highlight to-be-matched blocks when some are found
+- Combo counter for successive matches (regardless of block count)
+	e.g. 3 horizontal, then 4 vertical = 1 combo
+- Block counter for total number of blocks matched in chain
+	e.g. 3 horizontal + 4 vertical = 7 blocks
+- HP bar is located above the grid on the UI along with character (use ccui LoadingBar)
+
+Block types
+- Color blocks: these are the most common, matchable, swappable
+- Glass blocks: see below, less common, not matchable, not swappable
+- Item blocks: see below, not matchable, not swappable
+
+Glass blocks
+- Get tinted with the color of adjacent matches
+- Can be destroyed by nearby bombs
+
+Item blocks
+- Item blocks cannot be swapped but rather execute effects on touch
+- Bomb: destroys surrounding blocks, one bomb block can contain several
+	- Exploding bombs can set off other nearby bombs for maximum destruction
+	- Show as a chain of explosions, not all at the same time
+- Rainbow block: its color changes repeatedly, touch a color to make all blocks of that color disappear
+- HP recovery
+- [Tentative] Scan bar reversal
+
+------ Block type list ------
+- Color
+- Bomb
+- Rainbow
+- Malicious
+- HP+
+- Scan bar speed +/-
+------
+
+------ Block component list ------
+- Swappable(enabled)
+- Matchable
+- Explode (radius)
+------
+
+Fever mode
+- Fever mode gauge is located below the grid on the UI
+- Each successful match adds to the gauge
+- [Tentative] Malicious blocks exploding decrease the gauge
+- During fever mode, for every match, all blocks directly adjacent to the matched blocks are also collected
+- Fever mode lasts a certain amount of time (not specified yet)
+
+Victory conditions
+- Quests may have various victory conditions, e.g. (as of now):
+	1. Score reaches certain amount
+	2. Collected X number of a certain block type
+	3. Time trial, managed to get by without dying
+- No victory condition in Endless Mode, but difficulty increases with time
+
+Defeat conditions
+- Malicious blocks can appear at times
+- Each time the scan bar passes on them, a counter is decremented
+- When the counter reaches 0, the block explodes like a bomb, dealing damage to the player
+- Blocks destroyed are discarded and not collected
+- There are two ways to get rid of them (as of now):
+	1. Toss them to the bottom of the grid and they will disappear
+	2. Destroy them with a bomb nearby
+- Game is over when player's HP reaches 0
+
+Game cycle
+- Blocks matched during a game are collected and added to player's treasurery
+- Those blocks act as in-game currency (similar to Meteos DS)
+- In-game currency can purchase new characters, new themes, unlock features
