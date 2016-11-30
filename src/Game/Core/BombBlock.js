@@ -1,14 +1,11 @@
 var BombBlock = Block.extend({
 	power : 1,
 
-	ctor : function() {
+	ctor : function(power) {
 		this._super(100);
 
-		this.setName('BombBlock');
-	},
-
-	init : function() {
-		this._super();
+		this.power = power;
+		this.blockTouched = [ new Block.Attributes.LightUp(this, cc.color(255, 0, 0), 0.3, null) ];
 	},
 
 	onEnter : function() {
@@ -16,16 +13,18 @@ var BombBlock = Block.extend({
 	},
 
 	onTouch : function(touch, e) {
-		// TODO Light up + smoke
-		var base = cc.tintTo(0.3, 255, 255, 255);
-		var red = cc.tintTo(0.3, 255, 0, 0);
+		this.blockTouched[0].handle();
+	},
 
-		this.sprite.runAction(cc.repeatForever(cc.sequence(red, base)));
+	onScan : function() {
+		
+	},
+
+	onMatch : function() {
+		
 	},
 
 	onExit : function() {
 		this._super();
 	}
 });
-
-BombBlock.prototype.isMatchable = false;

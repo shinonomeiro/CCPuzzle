@@ -2,11 +2,8 @@ var ColorBlock = Block.extend({
 	ctor : function(typeId) {
 		this._super(typeId);
 
-		this.setName('ColorBlock');
-	},
-
-	init : function() {
-		this._super();
+		this.isMatchable = true;
+		this.blockTouched = [ new Block.Attributes.Swappable(this) ];
 	},
 
 	onEnter : function() {
@@ -14,25 +11,18 @@ var ColorBlock = Block.extend({
 	},
 
 	onTouch : function(touch, e) {
-		// TODO Play effect
-		cc.eventManager.dispatchCustomEvent(
-			'swap',
-			this.swap.bind(this)
-		);
+		this.blockTouched[0].handle();
 	},
 
-	swap : function(typeId) {
-		var frame = cc.spriteFrameCache.getSpriteFrame('block_' + typeId + '.png');
-		this.sprite.setSpriteFrame(frame);
-		var oldTypeId = this.typeId;
-		this.typeId = typeId;
+	onScan : function() {
+		
+	},
 
-		return oldTypeId;
+	onMatch : function() {
+		
 	},
 
 	onExit : function() {
 		this._super();
 	}
 });
-
-ColorBlock.prototype.isMatchable = true;

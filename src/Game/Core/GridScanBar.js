@@ -64,6 +64,14 @@ var GridScanBar = cc.Node.extend({
 		return () => this.onScan(i);
 	},
 
+	doPause : function() {
+		this.pause();
+	},
+
+	doResume : function() {
+		this.resume();
+	},
+
 	// TODO Implement speed change
 
 	onExit : function() {

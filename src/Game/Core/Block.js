@@ -3,11 +3,15 @@ var Block = cc.Node.extend({
 	sprite : null,
 
 	isMatchable : false,
+	blockTouched : [],
+	blockScanned : [],
+	blockMatched : [],
 
 	ctor : function(typeId) {
 		this._super();
 
 		this.typeId = typeId;
+
 		this.init();
 	},
 
@@ -23,17 +27,25 @@ var Block = cc.Node.extend({
 		));
 	},
 
+	// Nodes do not have bbox per-se, override needed
+	getBoundingBox : function() {
+		return this.sprite.getBoundingBox();
+	},
+
 	onEnter : function() {
 		this._super();
 	},
 
 	onTouch : function(touch, e) {
-		// Override
+		// Override in subclass
 	},
 
-	// Nodes do not have bbox per-se, override needed
-	getBoundingBox : function() {
-		return this.sprite.getBoundingBox();
+	onScan : function() {
+		// Override in subclass
+	},
+
+	onMatch : function() {
+		// Override in subclass
 	},
 
 	onExit : function() {
@@ -43,12 +55,12 @@ var Block = cc.Node.extend({
 
 // Factory functions
 
-Block.createColorBlock = function() {
-
+Block.createColorBlock = function(typeId) {
+	return new ColorBlock(typeId);
 }
 
-Block.createBombBlock = function() {
-	
+Block.createBombBlock = function(power) {
+	return new BombBlock(power);
 }
 
 Block.createMaliciousBlock = function() {

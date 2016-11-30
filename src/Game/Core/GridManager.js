@@ -79,7 +79,7 @@ var GridManager = cc.Node.extend({
 	},
 
 	processMatches : function(y) {
-		this.scanBar.pause();
+		this.scanBar.doPause();
 
 		var matches = this.getMatches(y);
 
@@ -117,7 +117,7 @@ var GridManager = cc.Node.extend({
 		} else {
 			this.comboCount = -1;
 			this.collectCount = 0;
-			this.scanBar.resume();
+			this.scanBar.doResume();
 		}
 	},
 
@@ -186,7 +186,7 @@ var GridManager = cc.Node.extend({
 	},
 
 	processExplosion : function(e) {
-		this.scanBar.pause();
+		this.scanBar.doPause();
 
 		var data = e.getUserData();
 		var explosive = data.sourceBlock;
@@ -253,7 +253,7 @@ var GridManager = cc.Node.extend({
 		cc.director.getScheduler().schedule(
 			() => { 
 				this.fillGrid();
-				this.scanBar.resume();
+				this.scanBar.doResume();
 			}, 
 			this, waitTime + this.scanBarCooldown, 0, 0, false, ''
 		);

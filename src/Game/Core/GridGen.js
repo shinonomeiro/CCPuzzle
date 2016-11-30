@@ -40,7 +40,7 @@ GridGen.prototype.fill = function(grid) {
 }
 
 GridGen.prototype.getRandomBlock = function() {
-	return Math.random() < 0.90
-		? new ColorBlock(Math.floor(Math.random() * 5))
-		: new BombBlock();
+	return Math.random() < 0.9
+		? Block.createColorBlock(Math.floor(Math.random() * 5))
+		: Block.createBombBlock();
 }
