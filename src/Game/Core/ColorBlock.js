@@ -14,10 +14,6 @@ var ColorBlock = Block.extend({
 		this.blockTouched[0].handle();
 	},
 
-	onScan : function() {
-		
-	},
-
 	onMatch : function() {
 		
 	},

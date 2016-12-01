@@ -1,6 +1,7 @@
 var BombBlock = Block.extend({
 	power : 1,
 	timer : 2,
+
 	active : false,
 
 	ctor : function(power, timer) {
@@ -8,11 +9,8 @@ var BombBlock = Block.extend({
 
 		this.power = power;
 		this.timer = timer;
-
-		this.blockTouched = [
-			new Block.Attributes.LightUp(this, cc.color(255, 0, 0), 0.3, null),
-			new Block.Attributes.Explode(this, this.power, this.timer)
-		];
+		this.blockTouched = [ new Block.Attributes.LightUp(this, cc.color(255, 0, 0), 0.3, null) ];
+		this.blockScanned = [ new Block.Attributes.Explode(this, this.power) ];
 	},
 
 	onEnter : function() {
@@ -25,20 +23,16 @@ var BombBlock = Block.extend({
 		}
 
 		this.active = true;
-
-		var act1 = cc.callFunc(this.blockTouched[0].handle, this.blockTouched[0]);
-		var act2 = cc.delayTime(this.timer);
-		var act3 = cc.callFunc(this.blockTouched[1].handle, this.blockTouched[1]);
-		
-		this.runAction(cc.sequence(act1, act2, act3));
+		this.priority = 1;
+		this.blockTouched[0].handle();
 	},
 
 	onScan : function() {
+		if (!this.active) {
+			return;
+		}
 		
-	},
-
-	onMatch : function() {
-		
+		this.blockScanned[0].handle();
 	},
 
 	onExit : function() {

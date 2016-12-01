@@ -52,6 +52,16 @@ var Block = cc.Node.extend({
 
 	onScan : function() {
 		// Override in subclass
+
+		// /!\ MUST notify GridManager of completion by sending custom event, e.g.
+		/*
+
+		cc.eventManager.dispatchCustomEvent(
+			'done',
+			sourceBlock : this.block
+		);
+
+		*/
 	},
 
 	hasMatchComponent : function(name) {

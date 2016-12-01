@@ -77,15 +77,19 @@ var GridManager = cc.Node.extend({
 	},
 
 	processRow : function(y) {
-		var matches = this.getMatches(y);
+		var arr = [].concat(this.grid[y]);
 
-		if (matches.length > 0) {
-			this.scanBar.doPause();
-			this.processMatches(y, matches);
+		arr.sort((s1, s2) => {
+			if (s1.block.priority < s2.block.priority) return 1;
+			else if (s1.block.priority > s2.block.priority) return -1;
+			else return 0
+		});
+		cc.log('y: ' + y);
+		cc.log(arr.map(s => s.block.priority));
+		if (arr[0].block.priority > 0) {
+			this.opQueue.push(() => arr[0].block.onScan());
 		} else {
-			this.scanBar.doResume();
-			this.comboCount = -1;
-			this.collectCount = 0;
+			this.opQueue.push(() => this.processMatches(y));
 		}
 	},
 
@@ -102,36 +106,48 @@ var GridManager = cc.Node.extend({
 		return matches;
 	},
 
-	processMatches : function(y, matches) {
-		matches.forEach(slot => {
-			var block = slot.block;
-			slot.block = null;
-			// TODO Play quick effect before unparenting
-			this.removeChild(block);
-		});
+	processMatches : function(y) {
+		this.isBusy = true;
+		this.scanBar.doPause();
 
-		if (this.comboCount > 0) {
-			cc.eventManager.dispatchCustomEvent(
-				'combo',
-				{ 
-					comboCount : this.comboCount,
-					collectCount : this.collectCount
-				}
+		var matches = this.getMatches(y);
+
+		if (matches.length > 0) {
+			matches.forEach(slot => {
+				var block = slot.block;
+				slot.block = null;
+				// TODO Play quick effect before unparenting
+				this.removeChild(block);
+			});
+
+			if (this.comboCount > 0) {
+				cc.eventManager.dispatchCustomEvent(
+					'combo',
+					{ 
+						comboCount : this.comboCount,
+						collectCount : this.collectCount
+					}
+				);
+			}
+
+			var waitTime = this.shiftBlocks(y) + this.scanBarCooldown;
+
+			cc.director.getScheduler().schedule(
+				() => {
+					this.fillGrid();
+					this.isBusy = false;
+					this.opQueue.push(() => this.processRow(y));
+				}, 
+				this, waitTime, 0, 0, false, ''
 			);
+		} else {
+			// End of item / match cycle, resume bar progression
+			this.isBusy = false;
+			this.scanBar.doResume();
+
+			this.comboCount = -1;
+			this.collectCount = 0;
 		}
-
-		var waitTime = this.shiftBlocks(y);
-
-		/*
-		(callback, target, interval, repeat, delay, paused, key)
-		*/
-		cc.director.getScheduler().schedule(
-			() => {
-				this.fillGrid();
-				this.processRow(y);
-			}, 
-			this, waitTime + this.scanBarCooldown, 0, 0, false, ''
-		);
 	},
 
 	match : function*(y) {
@@ -198,7 +214,8 @@ var GridManager = cc.Node.extend({
 		}
 	},
 
-	processExplosion : function(e) {
+	processExplosion : function(e) { // TODO Add combo
+		this.isBusy = true;
 		this.scanBar.doPause();
 
 		var data = e.getUserData();
@@ -234,7 +251,7 @@ var GridManager = cc.Node.extend({
 			targets.add(currentSlot);
 
 			// TODO Refactor
-			if (currentSlot.block.hasTouchComponent('Explode') &&
+			if (currentSlot.block.hasScanComponent('Explode') &&
 				!explosives.includes(currentSlot.block)) {
 
 				explosives.push(currentSlot.block);
@@ -258,17 +275,15 @@ var GridManager = cc.Node.extend({
 			this.removeChild(block);
 		});
 
-		var waitTime = this.shiftBlocks(1);
+		var waitTime = this.shiftBlocks(1) + this.scanBarCooldown;
 
-		/*
-		(callback, target, interval, repeat, delay, paused, key)
-		*/
 		cc.director.getScheduler().schedule(
 			() => { 
 				this.fillGrid();
-				this.scanBar.doResume();
+				this.isBusy = false;
+				this.opQueue.push(() => this.processRow(slot.gridPos.y));
 			}, 
-			this, waitTime + this.scanBarCooldown, 0, 0, false, ''
+			this, waitTime, 0, 0, false, ''
 		);
 	},
 
