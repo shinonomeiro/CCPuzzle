@@ -4,6 +4,7 @@ var GridManager = cc.Node.extend({
 	scanBar : null,
 	scanBarCooldown : 1,
 	spacing : null,
+	shiftTime : 0,
 
 	zOff: {
 		blocks : 1,
@@ -84,8 +85,7 @@ var GridManager = cc.Node.extend({
 			else if (s1.block.priority > s2.block.priority) return -1;
 			else return 0
 		});
-		cc.log('y: ' + y);
-		cc.log(arr.map(s => s.block.priority));
+
 		if (arr[0].block.priority > 0) {
 			this.opQueue.push(() => arr[0].block.onScan());
 		} else {
@@ -113,12 +113,6 @@ var GridManager = cc.Node.extend({
 		var matches = this.getMatches(y);
 
 		if (matches.length > 0) {
-			matches.forEach(slot => {
-				var block = slot.block;
-				slot.block = null;
-				// TODO Play quick effect before unparenting
-				this.removeChild(block);
-			});
 
 			if (this.comboCount > 0) {
 				cc.eventManager.dispatchCustomEvent(
@@ -130,16 +124,34 @@ var GridManager = cc.Node.extend({
 				);
 			}
 
-			var waitTime = this.shiftBlocks(y) + this.scanBarCooldown;
+			var effectDuration = 0;
 
-			cc.director.getScheduler().schedule(
-				() => {
-					this.fillGrid();
-					this.isBusy = false;
-					this.opQueue.push(() => this.processRow(y));
-				}, 
-				this, waitTime, 0, 0, false, ''
-			);
+			matches.forEach(slot => {
+				var block = slot.block;
+				slot.block = null;
+
+				var effects = [];
+				effects.push(cc.scaleTo(0.3, 0.1, 0.1));
+				var del = cc.callFunc(() => this.removeChild(block));
+
+				var spawn = cc.spawn(effects);
+				effectDuration = spawn.getDuration();
+				block.runAction(cc.sequence([spawn, del]));
+			});
+
+			var seq = [];
+			seq.push(cc.delayTime(effectDuration));
+			seq.push(cc.callFunc(() => this.shiftBlocks(y + 1)));
+			seq.push(cc.delayTime(this.shiftTime));
+			seq.push(cc.delayTime(this.scanBarCooldown));
+			seq.push(cc.callFunc(() => {
+				this.fillGrid();
+				this.isBusy = false;
+				this.opQueue.push(() => this.processRow(y));
+			}));
+
+			this.runAction(cc.sequence(seq));
+
 		} else {
 			// End of item / match cycle, resume bar progression
 			this.isBusy = false;
@@ -158,11 +170,8 @@ var GridManager = cc.Node.extend({
 		for (var x = 1; x < GridManager.gridSize.x; x++) {
 			slot = this.grid[y][x];
 
-			if (!slot.block.isMatchable) {
-				continue;
-			}
-
-			if (slot.block.typeId === match[match.length - 1].block.typeId) {
+			if (slot.block.isMatchable &&
+				slot.block.typeId === match[match.length - 1].block.typeId) {
 				match.push(slot);
 			} else {
 				if (match.length >= 3) {
@@ -182,10 +191,6 @@ var GridManager = cc.Node.extend({
 		for (var x = 0; x < GridManager.gridSize.x; x++) {
 			slot = this.grid[y][x];
 
-			if (!slot.block.isMatchable) {
-				continue;
-			}
-
 			match = [slot];
 
 			var recursive = (ry) => {
@@ -195,7 +200,8 @@ var GridManager = cc.Node.extend({
 
 				slot = this.grid[ry][x];
 
-				if (slot.block.typeId === match[match.length - 1].block.typeId) {
+				if (slot.block.isMatchable &&
+					slot.block.typeId === match[match.length - 1].block.typeId) {
 					match.push(slot);
 				} else {
 					return;
@@ -268,27 +274,44 @@ var GridManager = cc.Node.extend({
 		recursive(gridPos.y, gridPos.x - 1); // R
 		recursive(gridPos.y + 1, gridPos.x); // U
 
+		recursive(gridPos.y - 1, gridPos.x - 1);
+		recursive(gridPos.y + 1, gridPos.x + 1);
+		recursive(gridPos.y - 1, gridPos.x + 1);
+		recursive(gridPos.y + 1, gridPos.x - 1);
+
+		var effectDuration = 0;
+
 		targets.forEach(slot => {
 			var block = slot.block;
 			slot.block = null;
-			// TODO Play quick effect before unparenting
-			this.removeChild(block);
+
+			var effects = [];
+			effects.push(cc.rotateBy(0.5, Math.random() * 90, 0));
+			effects.push(cc.moveBy(0.5, 0, -50));
+			effects.push(cc.fadeTo(0.5, 0));
+			var del = cc.callFunc(() => this.removeChild(block));
+
+			var spawn = cc.spawn(effects).easing(cc.easeSineOut());
+			effectDuration = spawn.getDuration();
+			block.runAction(cc.sequence([spawn, del]));
 		});
 
-		var waitTime = this.shiftBlocks(1) + this.scanBarCooldown;
+		var seq = [];
+		seq.push(cc.delayTime(effectDuration));
+		seq.push(cc.callFunc(() => this.shiftBlocks(1)));
+		seq.push(cc.delayTime(this.shiftTime));
+		seq.push(cc.delayTime(this.scanBarCooldown));
+		seq.push(cc.callFunc(() => {
+			this.fillGrid();
+			this.isBusy = false;
+			this.opQueue.push(() => this.processRow(slot.gridPos.y));
+		}));
 
-		cc.director.getScheduler().schedule(
-			() => { 
-				this.fillGrid();
-				this.isBusy = false;
-				this.opQueue.push(() => this.processRow(slot.gridPos.y));
-			}, 
-			this, waitTime, 0, 0, false, ''
-		);
+		this.runAction(cc.sequence(seq));
 	},
 
 	shiftBlocks : function(y) {
-		var duration = 0;
+		var maxDuration = 0;
 
 		for (var j = y; j < GridManager.gridSize.y + GridManager.gridSize.y_hidden; j++) {
 			for (var i = 0; i < GridManager.gridSize.x; i++) {
@@ -316,19 +339,19 @@ var GridManager = cc.Node.extend({
 					var newPos = newSlot.getPosition();
 
 					var distance = utils.clamp(oldPos.y - newPos.y, 128, 512);
-					var _duration = distance / 512;
-					var moveTo = cc.moveTo(_duration, newPos);
+					var duration = distance / 512;
+					var moveTo = cc.moveTo(duration, newPos);
 					moveTo.easing(cc.easeSineIn());
 					block.runAction(moveTo);
 
-					if (_duration > duration) {
-						duration = _duration;
+					if (duration > maxDuration) {
+						maxDuration = duration;
 					}
 				}
 			}
 		}
 
-		return duration;
+		this.shiftTime = maxDuration;
 	},
 
 	fillGrid : function() {

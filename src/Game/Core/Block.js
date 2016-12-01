@@ -22,6 +22,9 @@ var Block = cc.Node.extend({
 		this.sprite = new cc.Sprite(frame);
 		this.addChild(this.sprite, 1);
 
+		this.cascadeColor = true;
+		this.cascadeOpacity = true;
+
 		this.addComponent(new Touchable(
 			this.onTouch.bind(this),
 			null,
