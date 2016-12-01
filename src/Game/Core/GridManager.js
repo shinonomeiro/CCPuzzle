@@ -78,16 +78,14 @@ var GridManager = cc.Node.extend({
 	},
 
 	processRow : function(y) {
-		var arr = [].concat(this.grid[y]);
+		var arr = []
+			.concat(this.grid[y])
+			.map(slot => slot.block)
+			.filter(block => block.priority > 0);
 
-		arr.sort((s1, s2) => {
-			if (s1.block.priority < s2.block.priority) return 1;
-			else if (s1.block.priority > s2.block.priority) return -1;
-			else return 0
-		});
-
-		if (arr[0].block.priority > 0) {
-			this.opQueue.push(() => arr[0].block.onScan());
+		if (arr.length > 0) {
+			var item = arr.reduce((a, b) => a.priority > b.priority ? b : a);
+			this.opQueue.push(() => item.onScan());
 		} else {
 			this.opQueue.push(() => this.processMatches(y));
 		}
@@ -103,6 +101,9 @@ var GridManager = cc.Node.extend({
 			this.collectCount += matches.length;
 		}
 
+		// Discard duplicates in case of T-shaped matches
+		matches = new Set(matches);
+
 		return matches;
 	},
 
@@ -112,7 +113,7 @@ var GridManager = cc.Node.extend({
 
 		var matches = this.getMatches(y);
 
-		if (matches.length > 0) {
+		if (matches.size > 0) {
 
 			if (this.comboCount > 0) {
 				cc.eventManager.dispatchCustomEvent(
@@ -170,8 +171,7 @@ var GridManager = cc.Node.extend({
 		for (var x = 1; x < GridManager.gridSize.x; x++) {
 			slot = this.grid[y][x];
 
-			if (slot.block.isMatchable &&
-				slot.block.typeId === match[match.length - 1].block.typeId) {
+			if (slot.block.isMatchable && slot.block.typeId === match[match.length - 1].block.typeId) {
 				match.push(slot);
 			} else {
 				if (match.length >= 3) {
@@ -200,8 +200,7 @@ var GridManager = cc.Node.extend({
 
 				slot = this.grid[ry][x];
 
-				if (slot.block.isMatchable &&
-					slot.block.typeId === match[match.length - 1].block.typeId) {
+				if (slot.block.isMatchable && slot.block.typeId === match[match.length - 1].block.typeId) {
 					match.push(slot);
 				} else {
 					return;
@@ -225,23 +224,23 @@ var GridManager = cc.Node.extend({
 		this.scanBar.doPause();
 
 		var data = e.getUserData();
-		var explosive = data.sourceBlock;
-		var slot = null;
+		var sourceBlock = data.sourceBlock;
+		var sourceSlot = null;
 
 		for (var y = 0; y < GridManager.gridSize.y; y++) {
 			for (var x = 0; x < GridManager.gridSize.x; x++) {
-				if (this.grid[y][x].block === explosive) {
-					slot = this.grid[y][x];
+				if (this.grid[y][x].block === sourceBlock) {
+					sourceSlot = this.grid[y][x];
 					break;
 				}
 			}
 		}
 
 		var targets = new Set();
-		targets.add(slot);
+		targets.add(sourceSlot);
 		var explosives = [];
 		var power = data.power;
-		var gridPos = slot.gridPos;
+		var gridPos = sourceSlot.gridPos;
 
 		var recursive = (y, x) => {
 			if (y < 0 ||
@@ -285,9 +284,14 @@ var GridManager = cc.Node.extend({
 			var block = slot.block;
 			slot.block = null;
 
+			var source = sourceSlot.getPosition();
+			var here = slot.getPosition();
+			var blowX = (here.x - source.x) != 0 ? 4096 / (here.x - source.x) : 0;
+			var blowY = (here.y - source.y) != 0 ? 4096 / (here.y - source.y) : 0;
+
 			var effects = [];
-			effects.push(cc.rotateBy(0.5, Math.random() * 90, 0));
-			effects.push(cc.moveBy(0.5, 0, -50));
+			effects.push(cc.rotateBy(0.5, Math.random() * 180, 0));
+			effects.push(cc.moveBy(0.5, blowX, blowY));
 			effects.push(cc.fadeTo(0.5, 0));
 			var del = cc.callFunc(() => this.removeChild(block));
 
@@ -304,7 +308,7 @@ var GridManager = cc.Node.extend({
 		seq.push(cc.callFunc(() => {
 			this.fillGrid();
 			this.isBusy = false;
-			this.opQueue.push(() => this.processRow(slot.gridPos.y));
+			this.opQueue.push(() => this.processRow(gridPos.y));
 		}));
 
 		this.runAction(cc.sequence(seq));

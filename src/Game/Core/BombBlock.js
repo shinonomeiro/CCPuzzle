@@ -23,7 +23,7 @@ var BombBlock = Block.extend({
 		}
 
 		this.active = true;
-		this.priority = 1;
+		this.priority = Date.now();
 		this.blockTouched[0].handle();
 	},
 
