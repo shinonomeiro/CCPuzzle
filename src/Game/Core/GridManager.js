@@ -13,6 +13,9 @@ var GridManager = cc.Node.extend({
 	comboCount : -1,
 	collectCount : 0,
 
+	opQueue : [],
+	isBusy : false,
+
 	ctor : function() {
 		this._super();
 
@@ -40,12 +43,20 @@ var GridManager = cc.Node.extend({
 
 		this.initialRender();
 
-		this.scanBar = new GridScanBar(this.grid, this.processMatches.bind(this));
+		this.scanBar = new GridScanBar(this.grid, this.processRow.bind(this));
 		this.addChild(this.scanBar, this.zOff.scanBar);
+
+		cc.eventManager.addListener({
+			event : cc.EventListener.CUSTOM,
+			eventName : 'explosion',
+			callback : this.processExplosion.bind(this)
+		}, this);
 	},
 
 	onEnter : function() {
 		this._super();
+
+		this.scheduleUpdate();
 	},
 
 	initialRender : function() {
@@ -65,10 +76,23 @@ var GridManager = cc.Node.extend({
 		}
 	},
 
+	processRow : function(y) {
+		var matches = this.getMatches(y);
+
+		if (matches.length > 0) {
+			this.scanBar.doPause();
+			this.processMatches(y, matches);
+		} else {
+			this.scanBar.doResume();
+			this.comboCount = -1;
+			this.collectCount = 0;
+		}
+	},
+
 	getMatches : function(y) {
 		var matches = [];
 
-		// Babel polyfill & ES6 FTW !
+		// Babel & ES6 FTW !
 		for (var match of this.match(y)) {
 			matches = matches.concat(match);
 			this.comboCount++;
@@ -78,47 +102,36 @@ var GridManager = cc.Node.extend({
 		return matches;
 	},
 
-	processMatches : function(y) {
-		this.scanBar.doPause();
+	processMatches : function(y, matches) {
+		matches.forEach(slot => {
+			var block = slot.block;
+			slot.block = null;
+			// TODO Play quick effect before unparenting
+			this.removeChild(block);
+		});
 
-		var matches = this.getMatches(y);
-
-		if (matches.length > 0) {
-
-			matches.forEach(slot => {
-				var block = slot.block;
-				slot.block = null;
-				// TODO Play quick effect before unparenting
-				this.removeChild(block);
-			});
-
-			var waitTime = this.shiftBlocks(y);
-
-			/*
-			(callback, target, interval, repeat, delay, paused, key)
-			*/
-			cc.director.getScheduler().schedule(
-				() => {
-					this.fillGrid();
-					this.processMatches(y);
-				}, 
-				this, waitTime + this.scanBarCooldown, 0, 0, false, ''
+		if (this.comboCount > 0) {
+			cc.eventManager.dispatchCustomEvent(
+				'combo',
+				{ 
+					comboCount : this.comboCount,
+					collectCount : this.collectCount
+				}
 			);
-
-			if (this.comboCount > 0) {
-				cc.eventManager.dispatchCustomEvent(
-					'combo',
-					{ 
-						comboCount : this.comboCount,
-						collectCount : this.collectCount
-					}
-				);
-			}
-		} else {
-			this.comboCount = -1;
-			this.collectCount = 0;
-			this.scanBar.doResume();
 		}
+
+		var waitTime = this.shiftBlocks(y);
+
+		/*
+		(callback, target, interval, repeat, delay, paused, key)
+		*/
+		cc.director.getScheduler().schedule(
+			() => {
+				this.fillGrid();
+				this.processRow(y);
+			}, 
+			this, waitTime + this.scanBarCooldown, 0, 0, false, ''
+		);
 	},
 
 	match : function*(y) {
@@ -209,9 +222,9 @@ var GridManager = cc.Node.extend({
 
 		var recursive = (y, x) => {
 			if (y < 0 ||
-				y > GridManager.gridSize.y ||
+				y >= GridManager.gridSize.y ||
 				x < 0 ||
-				x > GridManager.gridSize.x) {
+				x >= GridManager.gridSize.x) {
 
 				// Out of bounds
 				return;
@@ -221,7 +234,7 @@ var GridManager = cc.Node.extend({
 			targets.add(currentSlot);
 
 			// TODO Refactor
-			if (currentSlot.block.typeId === 100 &&
+			if (currentSlot.block.hasTouchComponent('Explode') &&
 				!explosives.includes(currentSlot.block)) {
 
 				explosives.push(currentSlot.block);
@@ -311,6 +324,17 @@ var GridManager = cc.Node.extend({
 			this.addChild(slot.block, this.zOff.blocks);
 			var pos = slot.getPosition();
 			slot.block.setPosition(pos.x, pos.y);
+		}
+	},
+
+	update : function(dt) {
+		if (this.isBusy) {
+			return;
+		}
+
+		if (this.opQueue.length > 0) {
+			var op = this.opQueue.shift();
+			op();
 		}
 	},
 

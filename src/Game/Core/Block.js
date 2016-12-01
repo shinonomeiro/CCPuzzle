@@ -7,6 +7,8 @@ var Block = cc.Node.extend({
 	blockScanned : [],
 	blockMatched : [],
 
+	priority : 0,
+
 	ctor : function(typeId) {
 		this._super();
 
@@ -36,12 +38,24 @@ var Block = cc.Node.extend({
 		this._super();
 	},
 
+	hasTouchComponent : function(name) {
+		return this.blockTouched.find(c => c.getName() === name);
+	},
+
 	onTouch : function(touch, e) {
 		// Override in subclass
 	},
 
+	hasScanComponent : function(name) {
+		return this.blockScanned.find(c => c.getName() === name);
+	},
+
 	onScan : function() {
 		// Override in subclass
+	},
+
+	hasMatchComponent : function(name) {
+		return this.blockMatched.find(c => c.getName() === name);
 	},
 
 	onMatch : function() {
@@ -53,14 +67,19 @@ var Block = cc.Node.extend({
 	}
 });
 
+// ID ranges
+
+Block.COLOR_RANGE = 0;
+Block.ITEM_RANGE = 1000;
+
 // Factory functions
 
 Block.createColorBlock = function(typeId) {
 	return new ColorBlock(typeId);
 }
 
-Block.createBombBlock = function(power) {
-	return new BombBlock(power);
+Block.createBombBlock = function(power, timer) {
+	return new BombBlock(power, timer);
 }
 
 Block.createMaliciousBlock = function() {

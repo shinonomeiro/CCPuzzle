@@ -5,6 +5,7 @@ Block.Attributes = {
 
 		ctor : function(block) {
 			this._super();
+			this.setName('Swappable');
 
 			this.block = block;
 		},
@@ -33,8 +34,10 @@ Block.Attributes = {
 		particles : null,
 
 		ctor : function(block, tint, time, particles) {
-			this.block = block;
+			this._super();
+			this.setName('LightUp');
 
+			this.block = block;
 			this.tint = tint;
 			this.time = time;
 			this.particles = particles;
@@ -49,4 +52,29 @@ Block.Attributes = {
 			this.block.sprite.runAction(cc.repeatForever(cc.sequence(act1, act2)));
 		}
 	}),
+
+	Explode : cc.Node.extend({
+		block : null,
+		power : 1,
+		particles : null,
+
+		ctor : function(block, power, particles) {
+			this._super();
+			this.setName('Explode');
+
+			this.block = block;
+			this.power = power;
+			this.particles = particles;
+		},
+
+		handle : function() {
+			cc.eventManager.dispatchCustomEvent(
+				'explosion',
+				{
+					sourceBlock : this.block,
+					power : this.power
+				}
+			);
+		}
+	})
 }

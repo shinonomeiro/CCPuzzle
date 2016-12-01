@@ -2,9 +2,6 @@ function GridGen() {
 	
 }
 
-GridGen.COLOR_RANGE = 0;
-GridGen.ITEM_RANGE = 100;
-
 GridGen.prototype.make = function(y, x) {
 	var grid = [];
 
@@ -42,5 +39,5 @@ GridGen.prototype.fill = function(grid) {
 GridGen.prototype.getRandomBlock = function() {
 	return Math.random() < 0.9
 		? Block.createColorBlock(Math.floor(Math.random() * 5))
-		: Block.createBombBlock();
+		: Block.createBombBlock(1, 2);
 }
