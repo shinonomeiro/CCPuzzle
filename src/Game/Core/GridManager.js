@@ -62,6 +62,15 @@ var GridManager = cc.Node.extend({
 				this.processRainbow(data.sourceBlock, data.colorId);
 			}
 		}, this);
+
+		cc.eventManager.addListener({
+			event : cc.EventListener.CUSTOM,
+			eventName : 'heal',
+			callback : (e) => {
+				var sourceBlock = e.getUserData();
+				this.processHeal(sourceBlock);
+			}
+		}, this);
 	},
 
 	onEnter : function() {
@@ -182,11 +191,6 @@ var GridManager = cc.Node.extend({
 			getSlot(coord.y - 1, coord.x); // D
 			getSlot(coord.y, coord.x - 1); // R
 			getSlot(coord.y + 1, coord.x); // U
-
-			getSlot(coord.y - 1, coord.x - 1);
-			getSlot(coord.y + 1, coord.x + 1);
-			getSlot(coord.y - 1, coord.x + 1);
-			getSlot(coord.y + 1, coord.x - 1);
 		}
 
 		if (matches.size > 0) {
@@ -430,6 +434,29 @@ var GridManager = cc.Node.extend({
 		this.parent.addCombo(collected);
 
 		var seq = this.createProcessSequence(effectDuration, 1, row);
+		this.runAction(seq);
+	},
+
+	processHeal : function(sourceBlock) {
+		this.isBusy = true;
+		this.scanBar.doPause();
+
+		var sourceSlot = this.getSlotOfBlock(sourceBlock);
+		var row = sourceSlot.gridPos.y;
+		sourceSlot.block = null;
+
+		var effects = [];
+		var effectDuration = 0;
+		effects.push(cc.scaleTo(1, 1.5, 1.5));
+		effects.push(cc.fadeTo(1, 0));
+		var del = cc.callFunc(() => this.removeChild(sourceBlock));
+		var spawn = cc.spawn(effects);
+		effectDuration = spawn.getDuration();
+		sourceBlock.runAction(cc.sequence([spawn, del]));
+
+		this.parent.addCombo([sourceBlock]);
+
+		var seq = this.createProcessSequence(effectDuration, row + 1, row);
 		this.runAction(seq);
 	},
 

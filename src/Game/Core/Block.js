@@ -56,16 +56,6 @@ var Block = cc.Node.extend({
 
 	onScan : function() {
 		// Override in subclass
-
-		// /!\ MUST notify GridManager of completion by sending custom event, e.g.
-		/*
-
-		cc.eventManager.dispatchCustomEvent(
-			'done',
-			sourceBlock : this.block
-		);
-
-		*/
 	},
 
 	hasMatchComponent : function(name) {
@@ -96,7 +86,7 @@ Block.isItem = function(value) {
 }
 
 Block.isEnemy = function(value) {
-	return value >= Block.COLOR_RANGE && value < 12000; // TODO
+	return value >= Block.COLOR_RANGE && value < 12000; // TEMP
 }
 
 // Factory functions
@@ -114,7 +104,7 @@ Block.createRainbowBlock = function() {
 }
 
 Block.createHealBlock = function() {
-	
+	return new HealBlock();
 }
 
 Block.createEnemyBlock = function() {

@@ -42,7 +42,7 @@ GridGen.prototype.getRandomBlock = function() {
 	if (rand < 0.94)
 		return Block.createColorBlock(Math.floor(Math.random() * 5));
 	else if (rand < 0.96)
-		return Block.createBombBlock(1, 2);
+		return Block.createHealBlock(); //Block.createBombBlock(1, 2);
 	else if (rand < 0.98)
 		return Block.createRainbowBlock();
 	else if (rand < 1)
