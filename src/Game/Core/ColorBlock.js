@@ -4,6 +4,8 @@ var ColorBlock = Block.extend({
 
 		this.isMatchable = true;
 		this.blockTouched = [ new Block.Attributes.Swappable(this) ];
+
+		this.value = 50;
 	},
 
 	onEnter : function() {

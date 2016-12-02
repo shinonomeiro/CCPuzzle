@@ -2,7 +2,6 @@ var GridManager = cc.Node.extend({
 	gridGen : null,
 	grid : null,
 	scanBar : null,
-	scanBarCooldown : 1,
 	spacing : null,
 	shiftTime : 0,
 
@@ -10,9 +9,6 @@ var GridManager = cc.Node.extend({
 		blocks : 1,
 		scanBar : 2
 	},
-
-	comboCount : -1,
-	collectCount : 0,
 
 	opQueue : [],
 	isBusy : false,
@@ -47,10 +43,24 @@ var GridManager = cc.Node.extend({
 		this.scanBar = new GridScanBar(this.grid, this.processRow.bind(this));
 		this.addChild(this.scanBar, this.zOff.scanBar);
 
+		// BLOCK EVENTS
+
 		cc.eventManager.addListener({
 			event : cc.EventListener.CUSTOM,
 			eventName : 'explosion',
-			callback : this.processExplosion.bind(this)
+			callback : (e) => {
+				var data = e.getUserData();
+				this.processExplosion(data.sourceBlock, data.power);
+			}
+		}, this);
+
+		cc.eventManager.addListener({
+			event : cc.EventListener.CUSTOM,
+			eventName : 'rainbow',
+			callback : (e) => {
+				var data = e.getUserData();
+				this.processRainbow(data.sourceBlock, data.colorId);
+			}
 		}, this);
 	},
 
@@ -61,9 +71,15 @@ var GridManager = cc.Node.extend({
 	},
 
 	initialRender : function() {
-		for (var y = 0; y < this.grid.length; y++) {
-			for (var x = 0; x < this.grid[y].length; x++) {
-				var pos = cc.p(x * this.spacing, y * this.spacing);
+		var offset = 16;
+
+		for (var y = 0; y < GridManager.gridSize.y + GridManager.gridSize.y_hidden; y++) {
+			for (var x = 0; x < GridManager.gridSize.x; x++) {
+
+				// Create a small gap between uppermost playable and stock rows
+				var pos = y >= GridManager.gridSize.y 
+					? cc.p(x * this.spacing, (y * this.spacing) + offset)
+					: cc.p(x * this.spacing, y * this.spacing);
 
 				var slot = this.grid[y][x];
 				slot.setPosition(pos.x, pos.y);
@@ -88,6 +104,7 @@ var GridManager = cc.Node.extend({
 			this.opQueue.push(() => item.onScan());
 		} else {
 			this.opQueue.push(() => this.processMatches(y));
+			this.opQueue.push(() => this.finalize(y));
 		}
 	},
 
@@ -97,8 +114,6 @@ var GridManager = cc.Node.extend({
 		// Babel & ES6 FTW !
 		for (var match of this.match(y)) {
 			matches = matches.concat(match);
-			this.comboCount++;
-			this.collectCount += matches.length;
 		}
 
 		// Discard duplicates in case of T-shaped matches
@@ -114,52 +129,36 @@ var GridManager = cc.Node.extend({
 		var matches = this.getMatches(y);
 
 		if (matches.size > 0) {
-
-			if (this.comboCount > 0) {
-				cc.eventManager.dispatchCustomEvent(
-					'combo',
-					{ 
-						comboCount : this.comboCount,
-						collectCount : this.collectCount
-					}
-				);
-			}
-
+			var effects = [];
 			var effectDuration = 0;
+			var collected = [];
 
 			matches.forEach(slot => {
 				var block = slot.block;
 				slot.block = null;
+				collected.push(block);
 
-				var effects = [];
+				// TODO Refactor effects to ColorBlock
 				effects.push(cc.scaleTo(0.3, 0.1, 0.1));
 				var del = cc.callFunc(() => this.removeChild(block));
 
 				var spawn = cc.spawn(effects);
 				effectDuration = spawn.getDuration();
 				block.runAction(cc.sequence([spawn, del]));
+
+				effects.length = 0;
 			});
 
-			var seq = [];
-			seq.push(cc.delayTime(effectDuration));
-			seq.push(cc.callFunc(() => this.shiftBlocks(y + 1)));
-			seq.push(cc.delayTime(this.shiftTime));
-			seq.push(cc.delayTime(this.scanBarCooldown));
-			seq.push(cc.callFunc(() => {
-				this.fillGrid();
-				this.isBusy = false;
-				this.opQueue.push(() => this.processRow(y));
-			}));
+			this.parent.addCombo(collected);
 
-			this.runAction(cc.sequence(seq));
+			var seq = this.createProcessSequence(effectDuration, y + 1, y);
+			this.runAction(seq);
 
 		} else {
 			// End of item / match cycle, resume bar progression
 			this.isBusy = false;
 			this.scanBar.doResume();
-
-			this.comboCount = -1;
-			this.collectCount = 0;
+			this.parent.resetCombo();
 		}
 	},
 
@@ -219,12 +218,10 @@ var GridManager = cc.Node.extend({
 		}
 	},
 
-	processExplosion : function(e) { // TODO Add combo
+	processExplosion : function(sourceBlock, power) { // TODO Add combo
 		this.isBusy = true;
 		this.scanBar.doPause();
 
-		var data = e.getUserData();
-		var sourceBlock = data.sourceBlock;
 		var sourceSlot = null;
 
 		for (var y = 0; y < GridManager.gridSize.y; y++) {
@@ -239,7 +236,6 @@ var GridManager = cc.Node.extend({
 		var targets = new Set();
 		targets.add(sourceSlot);
 		var explosives = [];
-		var power = data.power;
 		var gridPos = sourceSlot.gridPos;
 
 		var recursive = (y, x) => {
@@ -255,7 +251,6 @@ var GridManager = cc.Node.extend({
 			var currentSlot = this.grid[y][x];
 			targets.add(currentSlot);
 
-			// TODO Refactor
 			if (currentSlot.block.hasScanComponent('Explode') &&
 				!explosives.includes(currentSlot.block)) {
 
@@ -265,7 +260,7 @@ var GridManager = cc.Node.extend({
 				recursive(y - 1, x);
 				recursive(y, x - 1);
 				recursive(y + 1, x);
-			}			
+			}
 		}
 
 		recursive(gridPos.y, gridPos.x + 1); // L
@@ -278,18 +273,21 @@ var GridManager = cc.Node.extend({
 		recursive(gridPos.y - 1, gridPos.x + 1);
 		recursive(gridPos.y + 1, gridPos.x - 1);
 
+		var effects = [];
 		var effectDuration = 0;
+		var collected = [];
 
 		targets.forEach(slot => {
 			var block = slot.block;
 			slot.block = null;
+			collected.push(block);
 
+			// TODO Refactor effects to BombBlock
 			var source = sourceSlot.getPosition();
 			var here = slot.getPosition();
 			var blowX = (here.x - source.x) != 0 ? 4096 / (here.x - source.x) : 0;
 			var blowY = (here.y - source.y) != 0 ? 4096 / (here.y - source.y) : 0;
 
-			var effects = [];
 			effects.push(cc.rotateBy(0.5, Math.random() * 180, 0));
 			effects.push(cc.moveBy(0.5, blowX, blowY));
 			effects.push(cc.fadeTo(0.5, 0));
@@ -298,20 +296,84 @@ var GridManager = cc.Node.extend({
 			var spawn = cc.spawn(effects).easing(cc.easeSineOut());
 			effectDuration = spawn.getDuration();
 			block.runAction(cc.sequence([spawn, del]));
+
+			effects.length = 0;
 		});
 
+		this.parent.addCombo(collected);
+
+		var seq = this.createProcessSequence(effectDuration, 1, gridPos.y);
+		this.runAction(seq);
+	},
+
+	processRainbow : function(sourceBlock, colorId) {
+		this.isBusy = true;
+		this.scanBar.doPause();
+
+		var sourceSlot = null;
+
+		for (var y = 0; y < GridManager.gridSize.y; y++) {
+			for (var x = 0; x < GridManager.gridSize.x; x++) {
+				if (this.grid[y][x].block === sourceBlock) {
+					sourceSlot = this.grid[y][x];
+					break;
+				}
+			}
+		}
+
+		var row = sourceSlot.gridPos.y;
+		var targets = [sourceSlot];
+
+		for (var y = 0; y < GridManager.gridSize.y; y++) {
+			for (var x = 0; x < GridManager.gridSize.x; x++) {
+				var slot = this.grid[y][x];
+
+				if (slot.block.typeId === colorId) {
+					targets.push(slot);
+				}
+			}
+		}
+
+		var effects = [];
+		var effectDuration = 0;
+		var collected = [sourceBlock];
+
+		targets.forEach(slot => {
+			var block = slot.block;
+			slot.block = null;
+			collected.push(block);
+
+			// TODO Refactor effects to RainbowBlock
+			effects.push(cc.scaleTo(0.5, 1.2, 1.2));
+			effects.push(cc.fadeTo(0.5, 0));
+			var del = cc.callFunc(() => this.removeChild(block));
+
+			var spawn = cc.spawn(effects);
+			effectDuration = spawn.getDuration();
+			block.runAction(cc.sequence([spawn, del]));
+
+			effects.length = 0;
+		});
+
+		this.parent.addCombo(collected);
+
+		var seq = this.createProcessSequence(effectDuration, 1, row);
+		this.runAction(seq);
+	},
+
+	createProcessSequence : function(effectDuration, shiftFrom, resumeFrom) {
 		var seq = [];
 		seq.push(cc.delayTime(effectDuration));
-		seq.push(cc.callFunc(() => this.shiftBlocks(1)));
+		seq.push(cc.callFunc(() => this.shiftBlocks(shiftFrom)));
 		seq.push(cc.delayTime(this.shiftTime));
-		seq.push(cc.delayTime(this.scanBarCooldown));
+		seq.push(cc.delayTime(this.scanBar.cooldown));
 		seq.push(cc.callFunc(() => {
 			this.fillGrid();
 			this.isBusy = false;
-			this.opQueue.push(() => this.processRow(gridPos.y));
+			this.opQueue.push(() => this.processRow(resumeFrom));
 		}));
 
-		this.runAction(cc.sequence(seq));
+		return cc.sequence(seq);
 	},
 
 	shiftBlocks : function(y) {
@@ -367,6 +429,10 @@ var GridManager = cc.Node.extend({
 			var pos = slot.getPosition();
 			slot.block.setPosition(pos.x, pos.y);
 		}
+	},
+
+	finalize : function(y) {
+		// TODO Any logic to be done on row y after item/match cycle is over
 	},
 
 	update : function(dt) {

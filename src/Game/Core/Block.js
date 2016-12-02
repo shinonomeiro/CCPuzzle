@@ -8,6 +8,7 @@ var Block = cc.Node.extend({
 	blockMatched : [],
 
 	priority : 0,
+	value : 0,
 
 	ctor : function(typeId) {
 		this._super();
@@ -100,7 +101,7 @@ Block.createMaliciousBlock = function() {
 }
 
 Block.createRainbowBlock = function() {
-	
+	return new RainbowBlock();
 }
 
 Block.createHealBlock = function() {

@@ -2,8 +2,9 @@ var GridScanBar = cc.Node.extend({
 	grid : null,
 	onScan : null,
 	barSprite : null,
-	speed : 1,
+	speed : 2,
 	motion : null,
+	cooldown : 1,
 
 	ctor : function(grid, onScan) {
 		this._super();
