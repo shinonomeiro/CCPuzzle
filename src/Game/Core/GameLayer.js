@@ -6,6 +6,7 @@ var GameLayer = cc.Layer.extend({
 	comboCount : -1,
 	collectCount : 0,
 	score : 0,
+	maxCombo : 0,
 
 	ctor : function(space) {
 		this._super();
@@ -26,6 +27,10 @@ var GameLayer = cc.Layer.extend({
 		this.collectCount += collected.length;
 		this.score += this.comboCount * 100;
 		collected.forEach(block => this.score += block.value);
+
+		if (this.comboCount > this.maxCombo) {
+			this.maxCombo = this.comboCount;
+		}
 
 		cc.eventManager.dispatchCustomEvent(
 			'score',

@@ -403,6 +403,7 @@ var GridManager = cc.Node.extend({
 			effects.push(cc.moveTo(1, sourceSlot.getPosition().x, sourceSlot.getPosition().y));
 			effects.push(cc.rotateBy(1, (Math.random() - 0.5) * 90, 0));
 			effects.push(cc.tintTo(1, 0, 0, 0));
+			effects.push(cc.scaleTo(1, 0, 0));
 			var del = cc.callFunc(() => this.removeChild(block));
 
 			var spawn = cc.spawn(effects).easing(cc.easeSineIn());
