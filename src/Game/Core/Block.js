@@ -84,7 +84,20 @@ var Block = cc.Node.extend({
 // ID ranges
 
 Block.COLOR_RANGE = 0;
-Block.ITEM_RANGE = 1000;
+Block.ITEM_RANGE = 10000;
+Block.ENEMY_RANGE = 11000;
+
+Block.isColor = function(value) {
+	return value >= Block.COLOR_RANGE && value < Block.ITEM_RANGE;
+}
+
+Block.isItem = function(value) {
+	return value >= Block.ITEM_RANGE && value < Block.ENEMY_RANGE;
+}
+
+Block.isEnemy = function(value) {
+	return value >= Block.COLOR_RANGE && value < 12000; // TODO
+}
 
 // Factory functions
 
@@ -96,14 +109,14 @@ Block.createBombBlock = function(power, timer) {
 	return new BombBlock(power, timer);
 }
 
-Block.createMaliciousBlock = function() {
-	
-}
-
 Block.createRainbowBlock = function() {
 	return new RainbowBlock();
 }
 
 Block.createHealBlock = function() {
 	
+}
+
+Block.createEnemyBlock = function() {
+	return new EnemyBlock();
 }

@@ -5,7 +5,7 @@ var RainbowBlock = Block.extend({
 	cycle : null,
 
 	ctor : function() {
-		this._super(101);
+		this._super(Block.ITEM_RANGE + 1);
 
 		this.blockTouched = [ new Block.Attributes.LightUp(this, cc.color(153, 204, 255), 0.3, null) ];
 
@@ -19,10 +19,11 @@ var RainbowBlock = Block.extend({
 		this.addChild(this.rainbow, 0);
 
 		var colors = [];
-
+		var speed = Math.random() + 0.5;
+		
 		for (var i = 0; i < 5; i++) {
 			colors.push(cc.callFunc(this.createCallFunc(i)));
-			colors.push(cc.delayTime(0.5));
+			colors.push(cc.delayTime(speed));
 		}
 
 		this.cycle = cc.repeatForever(cc.sequence(colors));

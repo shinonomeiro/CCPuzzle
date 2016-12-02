@@ -93,18 +93,21 @@ var GridManager = cc.Node.extend({
 		}
 	},
 
+	// Start item / match cycle
 	processRow : function(y) {
 		var arr = []
 			.concat(this.grid[y])
 			.map(slot => slot.block)
-			.filter(block => block.priority > 0);
+			.filter(block => block.priority > 0 && Block.isEnemy(block.typeId));
 
 		if (arr.length > 0) {
 			var item = arr.reduce((a, b) => a.priority > b.priority ? b : a);
+			// A new processRow will be scheduled until no more items
 			this.opQueue.push(() => item.onScan());
+
 		} else {
+			// A new processRow will be scheduled until no more matches
 			this.opQueue.push(() => this.processMatches(y));
-			this.opQueue.push(() => this.finalize(y));
 		}
 	},
 
@@ -138,7 +141,6 @@ var GridManager = cc.Node.extend({
 				slot.block = null;
 				collected.push(block);
 
-				// TODO Refactor effects to ColorBlock
 				effects.push(cc.scaleTo(0.3, 0.1, 0.1));
 				var del = cc.callFunc(() => this.removeChild(block));
 
@@ -155,10 +157,7 @@ var GridManager = cc.Node.extend({
 			this.runAction(seq);
 
 		} else {
-			// End of item / match cycle, resume bar progression
-			this.isBusy = false;
-			this.scanBar.doResume();
-			this.parent.resetCombo();
+			this.postProcessRow(y);
 		}
 	},
 
@@ -218,21 +217,35 @@ var GridManager = cc.Node.extend({
 		}
 	},
 
-	processExplosion : function(sourceBlock, power) { // TODO Add combo
+	// Process enemies, repeat match cycle if necessary, or end it
+	postProcessRow : function(y) {
+		var arr = []
+			.concat(this.grid[y])
+			.map(slot => slot.block)
+			.filter(block => Block.isEnemy(block.typeId));
+
+		arr.forEach(enemy => enemy.priority === 0 ? enemy.onScan() : null);
+
+		var attackers = arr.filter(enemy => enemy.priority > 0)
+
+		if (attackers.length > 0) {
+			var attacker = attackers.reduce((a, b) => a.priority > b.priority ? b : a);
+			this.processEnemy(attacker);
+
+		} else {
+			arr.forEach(enemy => enemy.active = false);
+
+			this.isBusy = false;
+			this.scanBar.doResume();
+			this.parent.resetCombo();
+		}
+	},
+
+	processExplosion : function(sourceBlock, power) {
 		this.isBusy = true;
 		this.scanBar.doPause();
 
-		var sourceSlot = null;
-
-		for (var y = 0; y < GridManager.gridSize.y; y++) {
-			for (var x = 0; x < GridManager.gridSize.x; x++) {
-				if (this.grid[y][x].block === sourceBlock) {
-					sourceSlot = this.grid[y][x];
-					break;
-				}
-			}
-		}
-
+		var sourceSlot = this.getSlotOfBlock(sourceBlock);
 		var targets = new Set();
 		targets.add(sourceSlot);
 		var explosives = [];
@@ -282,7 +295,6 @@ var GridManager = cc.Node.extend({
 			slot.block = null;
 			collected.push(block);
 
-			// TODO Refactor effects to BombBlock
 			var source = sourceSlot.getPosition();
 			var here = slot.getPosition();
 			var blowX = (here.x - source.x) != 0 ? 4096 / (here.x - source.x) : 0;
@@ -310,17 +322,7 @@ var GridManager = cc.Node.extend({
 		this.isBusy = true;
 		this.scanBar.doPause();
 
-		var sourceSlot = null;
-
-		for (var y = 0; y < GridManager.gridSize.y; y++) {
-			for (var x = 0; x < GridManager.gridSize.x; x++) {
-				if (this.grid[y][x].block === sourceBlock) {
-					sourceSlot = this.grid[y][x];
-					break;
-				}
-			}
-		}
-
+		var sourceSlot = this.getSlotOfBlock(sourceBlock);
 		var row = sourceSlot.gridPos.y;
 		var targets = [sourceSlot];
 
@@ -343,7 +345,6 @@ var GridManager = cc.Node.extend({
 			slot.block = null;
 			collected.push(block);
 
-			// TODO Refactor effects to RainbowBlock
 			effects.push(cc.scaleTo(0.5, 1.2, 1.2));
 			effects.push(cc.fadeTo(0.5, 0));
 			var del = cc.callFunc(() => this.removeChild(block));
@@ -359,6 +360,68 @@ var GridManager = cc.Node.extend({
 
 		var seq = this.createProcessSequence(effectDuration, 1, row);
 		this.runAction(seq);
+	},
+
+	processEnemy : function(sourceBlock) {
+		this.isBusy = true;
+		this.scanBar.doPause();
+
+		var sourceSlot = this.getSlotOfBlock(sourceBlock);
+		var gridPos = sourceSlot.gridPos;
+		var targets = [sourceSlot];
+
+		var getSlot = (y, x) => {
+			if (y < 0 ||
+				y >= GridManager.gridSize.y ||
+				x < 0 ||
+				x >= GridManager.gridSize.x) {
+
+				// Out of bounds
+				return;
+			}
+
+			targets.push(this.grid[y][x]);
+		}
+
+		getSlot(gridPos.y, gridPos.x + 1); // L
+		getSlot(gridPos.y - 1, gridPos.x); // D
+		getSlot(gridPos.y, gridPos.x - 1); // R
+		getSlot(gridPos.y + 1, gridPos.x); // U
+
+		getSlot(gridPos.y - 1, gridPos.x - 1);
+		getSlot(gridPos.y + 1, gridPos.x + 1);
+		getSlot(gridPos.y - 1, gridPos.x + 1);
+		getSlot(gridPos.y + 1, gridPos.x - 1);
+
+		var effects = [];
+		var effectDuration = 0;
+
+		targets.forEach(slot => {
+			var block = slot.block;
+			slot.block = null;
+
+			effects.push(cc.moveTo(1, sourceSlot.getPosition().x, sourceSlot.getPosition().y));
+			effects.push(cc.rotateBy(1, (Math.random() - 0.5) * 90, 0));
+			effects.push(cc.tintTo(1, 0, 0, 0));
+			var del = cc.callFunc(() => this.removeChild(block));
+
+			var spawn = cc.spawn(effects).easing(cc.easeSineIn());
+			effectDuration = spawn.getDuration();
+			block.runAction(cc.sequence([spawn, del]));
+
+			effects.length = 0;
+		});
+
+		var seq = this.createProcessSequence(effectDuration, gridPos.y + 1, gridPos.y);
+		this.runAction(seq);
+	},
+
+	getSlotOfBlock : function(block) {
+		for (var x = 0; x < GridManager.gridSize.x; x++) {
+			if (this.grid[this.scanBar.currentRow][x].block === block) {
+				return this.grid[this.scanBar.currentRow][x];
+			}
+		}
 	},
 
 	createProcessSequence : function(effectDuration, shiftFrom, resumeFrom) {
@@ -431,16 +494,8 @@ var GridManager = cc.Node.extend({
 		}
 	},
 
-	finalize : function(y) {
-		// TODO Any logic to be done on row y after item/match cycle is over
-	},
-
 	update : function(dt) {
-		if (this.isBusy) {
-			return;
-		}
-
-		if (this.opQueue.length > 0) {
+		if (!this.isBusy && this.opQueue.length > 0) {
 			var op = this.opQueue.shift();
 			op();
 		}

@@ -4,6 +4,7 @@ var GridScanBar = cc.Node.extend({
 	barSprite : null,
 	speed : 2,
 	motion : null,
+	currentRow : 0,
 	cooldown : 1,
 
 	ctor : function(grid, onScan) {
@@ -54,7 +55,6 @@ var GridScanBar = cc.Node.extend({
 
 	onEnter : function() {
 		this._super();
-
 		this.runAction(this.motion);
 	},
 
@@ -62,7 +62,10 @@ var GridScanBar = cc.Node.extend({
 	// More details at:
 	// http://stackoverflow.com/questions/750486/javascript-closure-inside-loops-simple-practical-example
 	createCallFunc : function(i) {
-		return () => this.onScan(i);
+		return () => {
+			this.currentRow = i;
+			this.onScan(i);
+		}
 	},
 
 	doPause : function() {

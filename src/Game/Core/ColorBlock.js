@@ -1,6 +1,6 @@
 var ColorBlock = Block.extend({
 	ctor : function(typeId) {
-		this._super(typeId);
+		this._super(Block.COLOR_RANGE + typeId);
 
 		this.isMatchable = true;
 		this.blockTouched = [ new Block.Attributes.Swappable(this) ];
