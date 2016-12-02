@@ -8,6 +8,8 @@ var GameLayer = cc.Layer.extend({
 	score : 0,
 	maxCombo : 0,
 
+	isFeverMode : false,
+
 	ctor : function(space) {
 		this._super();
 

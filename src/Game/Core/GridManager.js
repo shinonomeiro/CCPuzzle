@@ -70,6 +70,7 @@ var GridManager = cc.Node.extend({
 		this.scheduleUpdate();
 	},
 
+	// Render the grid on screen
 	initialRender : function() {
 		var offset = 16;
 
@@ -93,7 +94,7 @@ var GridManager = cc.Node.extend({
 		}
 	},
 
-	// Start item / match cycle
+	// Start item/match cycle
 	processRow : function(y) {
 		var arr = []
 			.concat(this.grid[y])
@@ -107,29 +108,20 @@ var GridManager = cc.Node.extend({
 
 		} else {
 			// A new processRow will be scheduled until no more matches
-			this.opQueue.push(() => this.processMatches(y));
+			this.opQueue.push(() => 
+				this.parent.isFeverMode ? this.processFeverMode(y) : this.processMatches(y)
+			);
 		}
 	},
 
-	getMatches : function(y) {
-		var matches = [];
-
-		// Babel & ES6 FTW !
-		for (var match of this.match(y)) {
-			matches = matches.concat(match);
-		}
-
-		// Discard duplicates in case of T-shaped matches
-		matches = new Set(matches);
-
-		return matches;
-	},
-
+	// Process the matches, adding effects etc.
 	processMatches : function(y) {
 		this.isBusy = true;
 		this.scanBar.doPause();
 
 		var matches = this.getMatches(y);
+		// Discard duplicates (from T-shaped matches)
+		matches = new Set(matches);
 
 		if (matches.size > 0) {
 			var effects = [];
@@ -159,6 +151,85 @@ var GridManager = cc.Node.extend({
 		} else {
 			this.postProcessRow(y);
 		}
+	},
+
+	// Like processMatches, but cooler!
+	processFeverMode : function(y) {
+		this.isBusy = true;
+		this.scanBar.doPause();
+
+		var _matches = this.getMatches(y);
+		// Discard duplicates (from T-shaped matches)
+		var matches = new Set(matches);
+
+		var getSlot = (y, x) => {
+			if (y < 0 ||
+				y >= GridManager.gridSize.y ||
+				x < 0 ||
+				x >= GridManager.gridSize.x) {
+
+				// Out of bounds
+				return;
+			}
+
+			matches.add(this.grid[y][x]);
+		}
+
+		for (var i = 0; i < _matches.length; i++) {
+			var coord = _matches[i].gridPos;
+
+			getSlot(coord.y, coord.x + 1); // L
+			getSlot(coord.y - 1, coord.x); // D
+			getSlot(coord.y, coord.x - 1); // R
+			getSlot(coord.y + 1, coord.x); // U
+
+			getSlot(coord.y - 1, coord.x - 1);
+			getSlot(coord.y + 1, coord.x + 1);
+			getSlot(coord.y - 1, coord.x + 1);
+			getSlot(coord.y + 1, coord.x - 1);
+		}
+
+		if (matches.size > 0) {
+			var effects = [];
+			var effectDuration = 0;
+			var collected = [];
+
+			matches.forEach(slot => {
+				var block = slot.block;
+				slot.block = null;
+				collected.push(block);
+
+				// TODO Fever mode effects
+				effects.push(cc.scaleTo(0.3, 0.1, 0.1));
+				var del = cc.callFunc(() => this.removeChild(block));
+
+				var spawn = cc.spawn(effects);
+				effectDuration = spawn.getDuration();
+				block.runAction(cc.sequence([spawn, del]));
+
+				effects.length = 0;
+			});
+
+			this.parent.addCombo(collected);
+
+			var seq = this.createProcessSequence(effectDuration, y + 1, y);
+			this.runAction(seq);
+
+		} else {
+			this.postProcessRow(y);
+		}
+	},
+
+	// Grab all the blocks that are part of a match with the current row
+	getMatches : function(y) {
+		var matches = [];
+
+		// Babel & ES6 FTW !
+		for (var match of this.match(y)) {
+			matches = matches.concat(match);
+		}
+
+		return matches;
 	},
 
 	match : function*(y) {
@@ -425,6 +496,7 @@ var GridManager = cc.Node.extend({
 		}
 	},
 
+	// Creates a sequence to run the actions in order
 	createProcessSequence : function(effectDuration, shiftFrom, resumeFrom) {
 		var seq = [];
 		seq.push(cc.delayTime(effectDuration));
@@ -496,6 +568,7 @@ var GridManager = cc.Node.extend({
 	},
 
 	update : function(dt) {
+		// Process operation queue
 		if (!this.isBusy && this.opQueue.length > 0) {
 			var op = this.opQueue.shift();
 			op();

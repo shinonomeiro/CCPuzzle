@@ -1,5 +1,7 @@
 var Player = cc.Node.extend({
-	playerBlockColor : 2,
+	HP : 100,
+	fever : 0,
+	blockColor : 2,
 
 	ctor : function() {
 		this._super();
@@ -14,7 +16,7 @@ var Player = cc.Node.extend({
 			callback : this.handleSwap.bind(this)
 		}, this);
 
-		this.playerBlockHasChanged();
+		this.blockHasChanged();
 	},
 
 	onEnter : function() {
@@ -23,14 +25,14 @@ var Player = cc.Node.extend({
 
 	handleSwap : function(e) {
 		var swap = e.getUserData();
-		this.playerBlockColor = swap(this.playerBlockColor);
-		this.playerBlockHasChanged();
+		this.blockColor = swap(this.blockColor);
+		this.blockHasChanged();
 	},
 
-	playerBlockHasChanged : function() {
+	blockHasChanged : function() {
 		cc.eventManager.dispatchCustomEvent(
 			'playerBlock',
-			this.playerBlockColor
+			this.blockColor
 		);
 	},
 

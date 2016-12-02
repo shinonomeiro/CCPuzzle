@@ -10,7 +10,7 @@ var GameUILayer = cc.Layer.extend({
 
 	ctor : function() {
 		this._super();
-
+		
 		this.init();
 	},
 
@@ -37,6 +37,8 @@ var GameUILayer = cc.Layer.extend({
 		this.playerBlock.setPosition(winSize.width / 2, winSize.height - 250)
 		this.playerBlock.setScale(1.4, 1.4);
 		this.addChild(this.playerBlock);
+
+		// EVENT LISTENERS
 
 		cc.eventManager.addListener({
 			event : cc.EventListener.CUSTOM,
