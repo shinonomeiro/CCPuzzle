@@ -5,6 +5,9 @@ var GridManager = cc.Node.extend({
 	spacing : null,
 	shiftTime : 0,
 
+	marginTop : 0,
+	marginBottom : 0,
+
 	zOff: {
 		blocks : 1,
 		scanBar : 2
@@ -20,16 +23,16 @@ var GridManager = cc.Node.extend({
 	},
 
 	init : function() {
-		var sprite = new cc.Sprite('#block_0.png');
-		this.spacing = sprite.getContentSize().width;
-		sprite = null;
+		var frame = cc.spriteFrameCache.getSpriteFrame('block_0.png');
+		this.spacing = frame.getOriginalSize().width;
+		frame = null;
 
 		var winSize = cc.director.getWinSize();
 		var gridSize = GridManager.gridSize;
 		var marginLR = winSize.width - (gridSize.x * this.spacing);
 		// Align the grid to the center of the view
 		// Memo: Grid anchor is located at the center of the left-bottom-most block
-		this.setPosition((marginLR / 2) + (this.spacing / 2), 100);
+		this.setPosition((marginLR / 2) + (this.spacing / 2), 0);
 
 		this.gridGen = new GridGen();
 
@@ -37,6 +40,10 @@ var GridManager = cc.Node.extend({
 			gridSize.y + gridSize.y_hidden,
 			gridSize.x
 		);
+
+		// TEMP
+		this.marginTop = this.spacing / 4;
+		this.marginBottom = winSize.height / 8.5;
 
 		this.initialRender();
 
@@ -47,10 +54,10 @@ var GridManager = cc.Node.extend({
 
 		cc.eventManager.addListener({
 			event : cc.EventListener.CUSTOM,
-			eventName : 'explosion',
+			eventName : 'bomb',
 			callback : (e) => {
-				var data = e.getUserData();
-				this.processExplosion(data.sourceBlock, data.power);
+				var sourceBlock = e.getUserData();
+				this.processBomb(sourceBlock);
 			}
 		}, this);
 
@@ -81,23 +88,21 @@ var GridManager = cc.Node.extend({
 
 	// Render the grid on screen
 	initialRender : function() {
-		var offset = 16;
-
 		for (var y = 0; y < GridManager.gridSize.y + GridManager.gridSize.y_hidden; y++) {
 			for (var x = 0; x < GridManager.gridSize.x; x++) {
 
 				// Create a small gap between uppermost playable and stock rows
 				var pos = y >= GridManager.gridSize.y 
-					? cc.p(x * this.spacing, (y * this.spacing) + offset)
+					? cc.p(x * this.spacing, (y * this.spacing) + this.marginTop)
 					: cc.p(x * this.spacing, y * this.spacing);
 
 				var slot = this.grid[y][x];
-				slot.setPosition(pos.x, pos.y);
+				slot.setPosition(pos.x, this.marginBottom + pos.y);
 				slot.gridPos = { y : y, x : x };
 
 				// Align block with slot
 				var block = slot.block;
-				block.setPosition(pos.x, pos.y);
+				block.setPosition(pos.x, this.marginBottom + pos.y);
 				this.addChild(block, this.zOff.blocks);
 			}
 		}
@@ -108,7 +113,7 @@ var GridManager = cc.Node.extend({
 		var arr = []
 			.concat(this.grid[y])
 			.map(slot => slot.block)
-			.filter(block => block.priority > 0 && Block.isEnemy(block.typeId));
+			.filter(block => block.priority > 0 && Block.isItem(block.typeId));
 
 		if (arr.length > 0) {
 			var item = arr.reduce((a, b) => a.priority > b.priority ? b : a);
@@ -142,7 +147,7 @@ var GridManager = cc.Node.extend({
 				slot.block = null;
 				collected.push(block);
 
-				effects.push(cc.scaleTo(0.3, 0.1, 0.1));
+				block.onMatch(effects);
 				var del = cc.callFunc(() => this.removeChild(block));
 
 				var spawn = cc.spawn(effects);
@@ -203,8 +208,7 @@ var GridManager = cc.Node.extend({
 				slot.block = null;
 				collected.push(block);
 
-				// TODO Fever mode effects
-				effects.push(cc.scaleTo(0.3, 0.1, 0.1));
+				block.onMatch(effects);
 				var del = cc.callFunc(() => this.removeChild(block));
 
 				var spawn = cc.spawn(effects);
@@ -316,7 +320,7 @@ var GridManager = cc.Node.extend({
 		}
 	},
 
-	processExplosion : function(sourceBlock, power) {
+	processBomb : function(sourceBlock) {
 		this.isBusy = true;
 		this.scanBar.doPause();
 
@@ -339,7 +343,7 @@ var GridManager = cc.Node.extend({
 			var currentSlot = this.grid[y][x];
 			targets.add(currentSlot);
 
-			if (currentSlot.block.hasScanComponent('Explode') &&
+			if (currentSlot.block.canExplode &&
 				!explosives.includes(currentSlot.block)) {
 
 				explosives.push(currentSlot.block);
@@ -348,6 +352,11 @@ var GridManager = cc.Node.extend({
 				recursive(y - 1, x);
 				recursive(y, x - 1);
 				recursive(y + 1, x);
+
+				recursive(y + 1, x + 1);
+				recursive(y - 1, x - 1);
+				recursive(y + 1, x - 1);
+				recursive(y - 1, x + 1);
 			}
 		}
 
@@ -372,8 +381,8 @@ var GridManager = cc.Node.extend({
 
 			var source = sourceSlot.getPosition();
 			var here = slot.getPosition();
-			var blowX = (here.x - source.x) != 0 ? 4096 / (here.x - source.x) : 0;
-			var blowY = (here.y - source.y) != 0 ? 4096 / (here.y - source.y) : 0;
+			var blowX = (here.x - source.x) != 0 ? this.spacing * 64 / (here.x - source.x) : 0;
+			var blowY = (here.y - source.y) != 0 ? this.spacing * 64 / (here.y - source.y) : 0;
 
 			effects.push(cc.rotateBy(0.5, Math.random() * 180, 0));
 			effects.push(cc.moveBy(0.5, blowX, blowY));
@@ -588,9 +597,10 @@ var GridManager = cc.Node.extend({
 
 		for (var i = 0; i < updatedSlots.length; i++) {
 			var slot = updatedSlots[i];
-			this.addChild(slot.block, this.zOff.blocks);
 			var pos = slot.getPosition();
 			slot.block.setPosition(pos.x, pos.y);
+			
+			this.addChild(slot.block, this.zOff.blocks);
 		}
 	},
 

@@ -1,5 +1,5 @@
 var EnemyBlock = Block.extend({
-	counter : 2,
+	counter : 20,
 	effects : [],
 	label : null,
 	active : false,
@@ -7,7 +7,7 @@ var EnemyBlock = Block.extend({
 	ctor : function() {
 		this._super(Block.ENEMY_RANGE + 0);
 
-		this.blockScanned = [ new Block.Attributes.LightUp(this, cc.color(255, 0, 0), 0.3, null) ];
+		this.commonAttributes = [ new Block.Attributes.LightUp(this, cc.color(255, 0, 0), 0.3, null) ];
 
 		this.value = 1000;
 	},
@@ -15,7 +15,7 @@ var EnemyBlock = Block.extend({
 	onEnter : function() {
 		this._super();
 
-		this.label = new cc.LabelTTF(this.counter, 'Arial', 30);
+		this.label = new cc.LabelTTF(this.counter, 'Arial', 25);
 		this.label.setColor(255, 255, 255);
 		this.addChild(this.label, 2);
 	},
@@ -36,7 +36,7 @@ var EnemyBlock = Block.extend({
 			this.runAction(cc.sequence(this.effects));
 
 			if (this.counter === 1) {
-				this.blockScanned[0].handle();
+				this.commonAttributes[0].handle();
 			}
 
 		} else {

@@ -2,10 +2,12 @@ var Block = cc.Node.extend({
 	typeId : null,
 	sprite : null,
 
+	touchComponent : null,
+	touchListener : null,
+
 	isMatchable : false,
-	blockTouched : [],
-	blockScanned : [],
-	blockMatched : [],
+	canExplode : false,
+	commonAttributes : [],
 
 	priority : 0,
 	value : 0,
@@ -19,18 +21,35 @@ var Block = cc.Node.extend({
 	},
 
 	init : function() {
-		var frame = cc.spriteFrameCache.getSpriteFrame('block_' + this.typeId + '.png');
-		this.sprite = new cc.Sprite(frame);
+		this._super();
+
+		this.sprite = new cc.Sprite();
 		this.addChild(this.sprite, 1);
 
 		this.cascadeColor = true;
 		this.cascadeOpacity = true;
 
-		this.addComponent(new Touchable(
-			this.onTouch.bind(this),
-			null,
-			null
-		));
+		var self = this;
+
+		this.touchListener = cc.EventListener.create({
+			event: cc.EventListener.TOUCH_ONE_BY_ONE,
+			swallowTouches: true,
+
+			onTouchBegan: function(touch, e) {
+				var p = self.convertTouchToNodeSpace(touch);
+				var bbox = self.getBoundingBox();
+
+				if (cc.rectContainsPoint(bbox, p)) {
+					self.onTouch(touch, e);
+		  
+					// Swallow
+					return true;
+				};
+
+				// Passthru
+				return false;
+			}
+		});
 	},
 
 	// Nodes do not have bbox per-se, override needed
@@ -40,34 +59,37 @@ var Block = cc.Node.extend({
 
 	onEnter : function() {
 		this._super();
-	},
 
-	hasTouchComponent : function(name) {
-		return this.blockTouched.find(c => c.getName() === name);
+		var frame = cc.spriteFrameCache.getSpriteFrame('block_' + this.typeId + '.png');
+		this.sprite.setSpriteFrame(frame);
+
+		// Needed for pooling because listener is
+		// automatically removed from event manager upon onExit
+		cc.eventManager.addListener(this.touchListener, this);
 	},
 
 	onTouch : function(touch, e) {
 		// Override in subclass
 	},
 
-	hasScanComponent : function(name) {
-		return this.blockScanned.find(c => c.getName() === name);
-	},
-
 	onScan : function() {
 		// Override in subclass
 	},
 
-	hasMatchComponent : function(name) {
-		return this.blockMatched.find(c => c.getName() === name);
-	},
+	onMatch : function(effects) {
+		effects.push(cc.scaleTo(0.3, 0.1, 0.1));
 
-	onMatch : function() {
-		// Override in subclass
+		return effects;
 	},
 
 	onExit : function() {
 		this._super();
+
+		// Reset state
+		this.setRotation(0);
+		this.setScale(1, 1);
+		this.setColor(cc.color(255, 255, 255));
+		this.setOpacity(255);
 	}
 });
 
@@ -86,17 +108,21 @@ Block.isItem = function(value) {
 }
 
 Block.isEnemy = function(value) {
-	return value >= Block.COLOR_RANGE && value < 12000; // TEMP
+	return value >= Block.ENEMY_RANGE && value < 12000; // TEMP
 }
+
+// Pools
+
+var colorBlockPool = new ColorBlockPool();
 
 // Factory functions
 
 Block.createColorBlock = function(typeId) {
-	return new ColorBlock(typeId);
+	return colorBlockPool.getBlock(typeId);
 }
 
-Block.createBombBlock = function(power, timer) {
-	return new BombBlock(power, timer);
+Block.createBombBlock = function() {
+	return new BombBlock();
 }
 
 Block.createRainbowBlock = function() {

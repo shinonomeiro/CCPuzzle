@@ -20,7 +20,7 @@ var Touchable = cc.Component.extend({
 			swallowTouches: true,
 
 			onTouchBegan: function(touch, e) {
-				var p = owner.convertToNodeSpace(touch.getLocation());
+				var p = owner.convertTouchToNodeSpace(touch);
 				var bbox = owner.getBoundingBox();
 
 				if (cc.rectContainsPoint(bbox, p)) {
@@ -35,11 +35,13 @@ var Touchable = cc.Component.extend({
 				// Passthru
 				return false;
 			},
+
 			onTouchMoved: function(touch, e) {
 				if (self.onTouchMoved) {
 					self.onTouchMoved(touch, e);
 				}
 			},
+
 			onTouchEnded: function(touch, e) {
 				if (self.onTouchEnded) {
 					self.onTouchEnded(touch, e);

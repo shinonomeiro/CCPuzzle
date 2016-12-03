@@ -4,14 +4,14 @@ var BombBlock = Block.extend({
 
 	active : false,
 
-	ctor : function(power, timer) {
+	ctor : function() {
 		this._super(Block.ITEM_RANGE + 0);
 
-		this.power = power;
-		this.timer = timer;
-		
-		this.blockTouched = [ new Block.Attributes.LightUp(this, cc.color(255, 0, 0), 0.3, null) ];
-		this.blockScanned = [ new Block.Attributes.Explode(this, this.power) ];
+		this.canExplode = true;
+
+		this.commonAttributes = [ 
+			new Block.Attributes.LightUp(this, cc.color(255, 0, 0), 0.3, null),
+		];
 
 		this.value = 100;
 	},
@@ -27,7 +27,7 @@ var BombBlock = Block.extend({
 
 		this.active = true;
 		this.priority = Date.now();
-		this.blockTouched[0].handle();
+		this.commonAttributes[0].handle();
 	},
 
 	onScan : function() {
@@ -35,7 +35,10 @@ var BombBlock = Block.extend({
 			return;
 		}
 		
-		this.blockScanned[0].handle();
+		cc.eventManager.dispatchCustomEvent(
+			'bomb',
+			this
+		);
 	},
 
 	onExit : function() {

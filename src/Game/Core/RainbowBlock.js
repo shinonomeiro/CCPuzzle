@@ -7,7 +7,7 @@ var RainbowBlock = Block.extend({
 	ctor : function() {
 		this._super(Block.ITEM_RANGE + 1);
 
-		this.blockTouched = [ new Block.Attributes.LightUp(this, cc.color(153, 204, 255), 0.3, null) ];
+		this.commonAttributes = [ new Block.Attributes.LightUp(this, cc.color(153, 204, 255), 0.3, null) ];
 
 		this.value = 100;
 	},
@@ -45,7 +45,7 @@ var RainbowBlock = Block.extend({
 
 		this.active = true;
 		this.priority = Date.now();
-		this.blockTouched[0].handle();
+		this.commonAttributes[0].handle();
 
 		this.stopAction(this.cycle);
 	},
