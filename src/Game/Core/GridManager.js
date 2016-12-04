@@ -390,7 +390,7 @@ var GridManager = cc.Node.extend({
 			var del = cc.callFunc(() => this.removeChild(block));
 
 			var spawn = cc.spawn(effects).easing(cc.easeSineOut());
-			effectDuration = spawn.getDuration();
+			effectDuration = spawn.getDuration() / 1.5;
 			block.runAction(cc.sequence([spawn, del]));
 
 			effects.length = 0;
@@ -514,7 +514,7 @@ var GridManager = cc.Node.extend({
 			var del = cc.callFunc(() => this.removeChild(block));
 
 			var spawn = cc.spawn(effects).easing(cc.easeSineIn());
-			effectDuration = spawn.getDuration();
+			effectDuration = spawn.getDuration() / 1.5;
 			block.runAction(cc.sequence([spawn, del]));
 
 			effects.length = 0;
@@ -599,7 +599,7 @@ var GridManager = cc.Node.extend({
 			var slot = updatedSlots[i];
 			var pos = slot.getPosition();
 			slot.block.setPosition(pos.x, pos.y);
-			
+
 			this.addChild(slot.block, this.zOff.blocks);
 		}
 	},

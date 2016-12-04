@@ -9,6 +9,8 @@ var GameLayer = cc.Layer.extend({
 	maxCombo : 0,
 
 	isFeverMode : false,
+	feverDuration : 10,
+	feverTimer : 0,
 
 	ctor : function(space) {
 		this._super();
@@ -22,6 +24,10 @@ var GameLayer = cc.Layer.extend({
 
 		this.player = new Player();
 		this.addChild(this.player);
+
+		this.feverTimer = this.feverDuration;
+
+		this.scheduleUpdate();
 	},
 
 	addCombo : function(collected) {
@@ -36,7 +42,10 @@ var GameLayer = cc.Layer.extend({
 
 		cc.eventManager.dispatchCustomEvent(
 			'score',
-			this.score
+			{
+				score : this.score,
+				feverPoints : this.feverPoints
+			}
 		);
 
 		if (this.comboCount > 0) {
@@ -48,6 +57,22 @@ var GameLayer = cc.Layer.extend({
 				}
 			);
 		}
+
+		if (!this.isFeverMode) {
+			this.feverPoints += this.comboCount + collected.length;
+
+			if (this.feverPoints >= 100) {
+				this.isFeverMode = true;
+
+				cc.eventManager.dispatchCustomEvent(
+					'fever',
+					{
+						isOn : true,
+						duration : this.feverDuration
+					}
+				);
+			}
+		}
 	},
 
 	resetCombo : function() {
@@ -57,6 +82,27 @@ var GameLayer = cc.Layer.extend({
 
 	onEnter : function() {
 		this._super();
+	},
+
+	update : function(dt) {
+		if (this.isFeverMode) {
+			this.feverTimer -= dt;
+
+			if (this.feverTimer < 0) {
+
+				this.isFeverMode = false;
+				this.feverPoints = 0;
+				this.feverTimer = 10;
+
+				cc.eventManager.dispatchCustomEvent(
+					'fever',
+					{
+						isOn : false,
+						duration : this.feverDuration
+					}
+				);
+			}
+		}
 	},
 
 	onExit : function() {
