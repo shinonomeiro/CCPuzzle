@@ -160,7 +160,7 @@ var GridManager = cc.Node.extend({
 			this.parent.addCombo(collected);
 
 			var seq = this.createProcessSequence(effectDuration, y + 1, y);
-			this.runAction(seq);
+			this.runAction(cc.sequence(seq));
 
 		} else {
 			this.postProcessRow(y);
@@ -221,7 +221,7 @@ var GridManager = cc.Node.extend({
 			this.parent.addCombo(collected);
 
 			var seq = this.createProcessSequence(effectDuration, y + 1, y);
-			this.runAction(seq);
+			this.runAction(cc.sequence(seq));
 
 		} else {
 			this.postProcessRow(y);
@@ -399,7 +399,7 @@ var GridManager = cc.Node.extend({
 		this.parent.addCombo(collected);
 
 		var seq = this.createProcessSequence(effectDuration, 1, gridPos.y);
-		this.runAction(seq);
+		this.runAction(cc.sequence(seq));
 	},
 
 	processRainbow : function(sourceBlock, colorId) {
@@ -443,7 +443,7 @@ var GridManager = cc.Node.extend({
 		this.parent.addCombo(collected);
 
 		var seq = this.createProcessSequence(effectDuration, 1, row);
-		this.runAction(seq);
+		this.runAction(cc.sequence(seq));
 	},
 
 	processHeal : function(sourceBlock) {
@@ -466,7 +466,8 @@ var GridManager = cc.Node.extend({
 		this.parent.addCombo([sourceBlock]);
 
 		var seq = this.createProcessSequence(effectDuration, row + 1, row);
-		this.runAction(seq);
+		seq.splice(1, 0, cc.callFunc(() => this.parent.player.onHeal()));
+		this.runAction(cc.sequence(seq));
 	},
 
 	processEnemy : function(sourceBlock) {
@@ -521,7 +522,9 @@ var GridManager = cc.Node.extend({
 		});
 
 		var seq = this.createProcessSequence(effectDuration, gridPos.y + 1, gridPos.y);
-		this.runAction(seq);
+		seq.splice(1, 0, cc.callFunc(() => this.parent.player.onEnemyAttack()));
+
+		this.runAction(cc.sequence(seq));
 	},
 
 	getSlotOfBlock : function(block) {
@@ -532,7 +535,7 @@ var GridManager = cc.Node.extend({
 		}
 	},
 
-	// Creates a sequence to run the actions in order
+	// Creates an array to run the actions as a sequence
 	createProcessSequence : function(effectDuration, shiftFrom, resumeFrom) {
 		var seq = [];
 		seq.push(cc.delayTime(effectDuration));
@@ -545,7 +548,7 @@ var GridManager = cc.Node.extend({
 			this.opQueue.push(() => this.processRow(resumeFrom));
 		}));
 
-		return cc.sequence(seq);
+		return seq;
 	},
 
 	shiftBlocks : function(y) {

@@ -1,5 +1,5 @@
 var EnemyBlock = Block.extend({
-	counter : 20,
+	counter : 10,
 	effects : [],
 	label : null,
 	active : false,

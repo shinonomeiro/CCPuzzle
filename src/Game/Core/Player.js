@@ -36,6 +36,37 @@ var Player = cc.Node.extend({
 		);
 	},
 
+	onHeal : function() {
+		this.HP += 10;
+
+		if (this.HP > 100) {
+			this.HP = 100;
+		}
+
+		cc.eventManager.dispatchCustomEvent(
+			'playerHP',
+			this.HP
+		);
+	},
+
+	onEnemyAttack : function() {
+		this.HP -= 10;
+
+		cc.eventManager.dispatchCustomEvent(
+			'playerHP',
+			this.HP
+		);
+
+		if (this.HP < 0) {
+			this.HP = 0;
+
+			cc.eventManager.dispatchCustomEvent(
+				'playerDead',
+				null
+			);
+		}
+	},
+
 	onExit : function() {
 		this._super();
 	}

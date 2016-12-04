@@ -81,16 +81,25 @@ var GameUILayer = cc.Layer.extend({
 		cc.eventManager.addListener({
 			event : cc.EventListener.CUSTOM,
 			eventName : 'fever',
-			callback : (e) => {
-				var data = e.getUserData();
-				this.onFeverMode(data.isOn, data.duration);
-			}
+			callback : this.onFeverMode.bind(this)
 		}, this);
 
 		cc.eventManager.addListener({
 			event : cc.EventListener.CUSTOM,
 			eventName : 'playerBlock',
 			callback : this.setPlayerBlock.bind(this)
+		}, this);
+
+		cc.eventManager.addListener({
+			event : cc.EventListener.CUSTOM,
+			eventName : 'playerHP',
+			callback : this.updatePlayerHP.bind(this)
+		}, this);
+
+		cc.eventManager.addListener({
+			event : cc.EventListener.CUSTOM,
+			eventName : 'playerDead',
+			callback : this.onGameOver.bind(this)
 		}, this);
 
 		// TODO Swallow touches directed at the UI
@@ -137,17 +146,28 @@ var GameUILayer = cc.Layer.extend({
 		this.collectCount.string = 'Collected: ' + data.collectCount;
 	},
 
-	onFeverMode : function(isOn, duration) {
-		this.isFeverMode = isOn;
-		this.feverDuration = duration;
+	onFeverMode : function(e) {
+		var data = e.getUserData();
 
-		this.fever.setVisible(isOn);
+		this.isFeverMode = data.isOn;
+		this.feverDuration = data.duration;
+
+		this.fever.setVisible(data.isOn);
 	},
 
 	setPlayerBlock : function(e) {
 		var typeId = e.getUserData();
 		var frame = cc.spriteFrameCache.getSpriteFrame('block_' + typeId + '.png');
 		this.playerBlock.setSpriteFrame(frame);
+	},
+
+	updatePlayerHP : function(e) {
+		var HP = e.getUserData();
+		this.healthBar.setPercent(HP);
+	},
+
+	onGameOver : function(e) {
+		// TODO
 	},
 
 	update : function(dt) {
