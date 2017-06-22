@@ -1,3 +1,4 @@
+# CCPuzzle
 Simple 2D puzzle game made with Cocos2D-JS-ES6
 
 ### Build
